@@ -2,6 +2,7 @@ var mysql = require("mysql");
 var inq = require("inquirer");
 var cart = [];
 var itemAmount = [];
+var dbItem;
 
 var connection = mysql.createConnection({
     host: "localhost",
@@ -39,135 +40,99 @@ function displayInv() {
         choice();
     });
 
-}
+};
 
-function amount(){
+function amount() {
     inq.prompt([{
         type: 'text',
         name: 'amount',
         message: "How many would you like to buy?"
-    }]).then(function (amount) {
-        if (!amount) {
+    }]).then(function (answer) {
+        if (!answer.amount) {
             console.log('------------------------------------');
             console.log("Please enter an amount.");
             console.log('------------------------------------');
             choice();
         }
-        itemAmount.push(amount);
+        itemAmount.push(answer.amount);
         console.log('------------------------------------');
         console.log("Added item(s) to cart!");
         console.log(cart);
-        console.log(amount);
+        console.log(answer.amount);
         console.log('------------------------------------');
+        checkInv();
     });
 
 };
 
 
 function choice() {
+    cart = [];
     inq.prompt([{
         type: 'text',
         name: 'item',
         message: "What would you like to buy? Enter an ID"
     }]).then(function (answer) {
-        if (!answer.choice) {
+        if (!answer.item) {
             console.log('------------------------------------');
             console.log("Please enter an ID.");
             console.log('------------------------------------');
             choice();
+        } else {
+            cart.push(answer.item);
         }
-        cart.push(answer);
         amount();
-        
-       
     });
+
+};
+
+function checkInv() {
+    console.log('------------------------------------');
+    console.log("Verifying inventory!");
+    console.log('------------------------------------');
+
+    connection.query("SELECT * FROM products", function (err, res) {
+        dbItem = res[cart[0] - 1];
+        if (Number(dbItem.quantity) >= Number(itemAmount)) {
+            console.log(dbItem.quantity);
+            console.log("We have enough! Your total is $" + dbItem.price * Number(itemAmount))
+
+        } else {
+            console.log("Woah! We don't have enough of those!!!")
+            choice();
+        }
+        
+
+    })
+    confirmPurchase();
+
 }
 
+function confirmPurchase() {
+    inq.prompt([{
+        type: "confirm",
+        name: "confirm",
+        message: "Are you sure you want to make this purchase?",
+    }]).then(function (answer) {
+            if (answer.confirm === true) {
+                connection.query("UPDATE products SET ? WHERE ?",
+                [{
+                        quantity: Number(dbItem.quantity) - Number(amount)
+                    },
+                    {
+                        name: dbItem.name
+                    }
+                ],
+        
+            );
+
+        }
+
+    })
+
+};
 
 
-// function post() {
-//     inq.prompt([{
-//             type: 'input',
-//             name: 'post',
-//             message: "What would you like to post?",
-//         },
-//         {
-//             type: 'input',
-//             name: 'price',
-//             message: "How much would you like to sell it for?",
-
-//         }
-//     ]).then(function (answer) {
-//         if (!answer) {
-//             console.log('------------------------------------');
-//             console.log("There was an error...Oops");
-//             console.log('------------------------------------');
-//         }
-
-//         var newItem = answer.post;
-//         var newPrice = answer.price;
-//         connection.query("INSERT INTO products SET ?", {
-//                 name: newItem,
-//                 bid: newPrice
-//             },
-//             function (err, res) {
-//                 console.log('------------------------------------');
-//                 console.log(res.affectedRows + "Product inserted!\n");
-//                 console.log('------------------------------------');
-//             })
-
-
-
-//     });
-// }
-
-// function queryProducts(){
-//     connection.query("SELECT * FROM products", function(err, res) {
-//         if (err) throw err;
-//         // Log all results of the SELECT statement
-//         console.log(res);
-//         connection.end();
-//       });
-//     }
-// }
-
-// function bid(){
-//     inq.prompt([{
-//         type: 'list',
-//         name: 'bidlist',
-//         message: "What would you like to bid on?",
-//         choices: 
-//     },
-//     {
-//         type: 'input',
-//         name: 'bid',
-//         message: "How much would you like to bid?",
-
-//     }
-// ]).then(function (answer) {
-//     if (!answer) {
-//         console.log('------------------------------------');
-//         console.log("There was an error...Oops");
-//         console.log('------------------------------------');
-//     }
-
-//     var item = answer.bidlist;
-//     var newPrice = answer.price;
-//     connection.query("INSERT INTO products SET ?", {
-//             name: newItem,
-//             bid: newPrice
-//         },
-//         function (err, res) {
-//             console.log('------------------------------------');
-//             console.log(res.affectedRows + "Product inserted!\n");
-//             console.log('------------------------------------');
-//         })
-
-
-
-// });
-
-// }
 
 
 
@@ -213,32 +178,3 @@ function choice() {
 //       deleteProduct();
 //     }
 //   );
-
-//   // logs the actual query being run
-//   console.log(query.sql);
-// }
-
-// function deleteProduct() {
-//   console.log("Deleting all strawberry icecream...\n");
-//   connection.query(
-//     "DELETE FROM products WHERE ?",
-//     {
-//       flavor: "strawberry"
-//     },
-//     function(err, res) {
-//       console.log(res.affectedRows + " products deleted!\n");
-//       // Call readProducts AFTER the DELETE completes
-//       readProducts();
-//     }
-//   );
-// }
-
-// function readProducts() {
-//   console.log("Selecting all products...\n");
-//   connection.query("SELECT * FROM products", function(err, res) {
-//     if (err) throw err;
-//     // Log all results of the SELECT statement
-//     console.log(res);
-//     connection.end();
-//   });
-// }
